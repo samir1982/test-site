@@ -57,9 +57,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      SMTP_SERVER: ${{ secrets.SMTP_SERVER || vars.SMTP_SERVER }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT || vars.SMTP_PORT }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME || vars.SMTP_USERNAME }}
+      # Gmail defaults; secrets/variables can still override these values.
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER || vars.SMTP_SERVER || 'smtp.gmail.com' }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT || vars.SMTP_PORT || '465' }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME || vars.SMTP_USERNAME || 'salounici@gmail.com' }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || vars.SMTP_PASSWORD }}
       MAIL_FROM: ${{ secrets.MAIL_FROM || vars.MAIL_FROM }}
       SMTP_SECURE: ${{ secrets.SMTP_SECURE || vars.SMTP_SECURE }}
