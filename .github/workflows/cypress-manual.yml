@@ -136,8 +136,29 @@ jobs:
           name: cypress-run-summary
           path: cypress-run-summary.txt
 
+      - name: Check SMTP configuration
+        if: always()
+        id: smtp_check
+        shell: bash
+        run: |
+          MISSING=""
+
+          if [ -z "$SMTP_SERVER" ]; then MISSING="$MISSING SMTP_SERVER"; fi
+          if [ -z "$SMTP_PORT" ]; then MISSING="$MISSING SMTP_PORT"; fi
+          if [ -z "$SMTP_USERNAME" ]; then MISSING="$MISSING SMTP_USERNAME"; fi
+          if [ -z "$SMTP_PASSWORD" ]; then MISSING="$MISSING SMTP_PASSWORD"; fi
+          if [ -z "$MAIL_FROM" ]; then MISSING="$MISSING MAIL_FROM"; fi
+
+          if [ -n "$MISSING" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "missing=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Send results by email
-        if: always() && env.SMTP_SERVER != '' && env.SMTP_USERNAME != '' && env.SMTP_PASSWORD != ''
+        if: always() && steps.smtp_check.outputs.ready == 'true'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ env.SMTP_SERVER }}
@@ -162,7 +183,8 @@ jobs:
           attachments: cypress-run-summary.txt
 
       - name: Notify missing SMTP secrets
-        if: always() && (env.SMTP_SERVER == '' || env.SMTP_USERNAME == '' || env.SMTP_PASSWORD == '')
+        if: always() && steps.smtp_check.outputs.ready != 'true'
         shell: bash
         run: |
           echo "SMTP secrets are missing. Email notification was skipped." >> "$GITHUB_STEP_SUMMARY"
+          echo "Missing secrets:${{ steps.smtp_check.outputs.missing }}" >> "$GITHUB_STEP_SUMMARY"
