@@ -1,0 +1,34 @@
+{
+  "name": "projetcypress",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "cypress run",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "test:prod": "cypress run --env targetEnv=prod",
+    "test:switch:prod": "cypress run --spec cypress/e2e/language-switch.feature --env targetEnv=prod",
+    "test:switch:prod:fr": "cypress run --headed --browser chrome --spec cypress/e2e/language-switch.feature --env targetEnv=prod,lang=fr",
+    "test:switch:prod:en": "cypress run --headed --browser chrome --spec cypress/e2e/language-switch.feature --env targetEnv=prod,lang=en",
+    "test:switch:prod:fr:desktop": "cypress run --headed --browser chrome --spec cypress/e2e/language-switch.feature --env targetEnv=prod,lang=fr,device=desktop",
+    "test:switch:prod:fr:mobile": "cypress run --headed --browser chrome --spec cypress/e2e/language-switch.feature --env targetEnv=prod,lang=fr,device=mobile",
+    "test:switch:prod:en:desktop": "cypress run --headed --browser chrome --spec cypress/e2e/language-switch.feature --env targetEnv=prod,lang=en,device=desktop",
+    "test:switch:prod:en:mobile": "cypress run --headed --browser chrome --spec cypress/e2e/language-switch.feature --env targetEnv=prod,lang=en,device=mobile",
+    "test:search:prod": "cypress run --spec cypress/e2e/search.feature --env targetEnv=prod",
+    "test:search:prod:fr:desktop": "cypress run --headed --browser chrome --spec cypress/e2e/search.feature --env targetEnv=prod,lang=fr,device=desktop",
+    "test:search:prod:fr:mobile": "cypress run --headed --browser chrome --spec cypress/e2e/search.feature --env targetEnv=prod,lang=fr,device=mobile",
+    "test:search:prod:en:desktop": "cypress run --headed --browser chrome --spec cypress/e2e/search.feature --env targetEnv=prod,lang=en,device=desktop",
+    "test:search:prod:en:mobile": "cypress run --headed --browser chrome --spec cypress/e2e/search.feature --env targetEnv=prod,lang=en,device=mobile"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@badeball/cypress-cucumber-preprocessor": "^27.0.0",
+    "@bahmutov/cypress-esbuild-preprocessor": "^2.2.8",
+    "cypress": "^15.21.1",
+    "esbuild": "^0.28.2"
+  }
+}
