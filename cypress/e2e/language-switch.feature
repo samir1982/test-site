@@ -3,6 +3,7 @@ Feature: Switch de langue NBC
   Je veux basculer entre les pages FR et EN
   Afin de verifier le switch de langue sur prod
 
+  @switch @prod
   Scenario Outline: Basculer de langue sur prod
     Given je teste l'environnement "prod"
     And j'utilise le device "<device>"
