@@ -145,6 +145,7 @@ Pour un futur test recherche (exemple mot-cle "quebec"), ajoute les selecteurs e
 - device: all, desktop, mobile
 - tags: filtre Gherkin (ex: @switch, @search, @search and not @wip)
 - keyword: mot recherche optionnel (ex: entreprises, business)
+- email_to: destinataire du resultat (defaut: salounici@gmail.com)
 
 Tags Gherkin disponibles:
 
@@ -153,3 +154,13 @@ Tags Gherkin disponibles:
 - Si tags=@switch, l action lance language-switch.feature
 - Si tags=@search, l action lance search.feature
 - Si tags est vide, l action lance tous les fichiers .feature
+
+Notification email apres execution:
+
+- Le workflow envoie un email avec le statut et le lien du run.
+- Configure ces secrets GitHub dans Settings > Secrets and variables > Actions:
+- SMTP_SERVER (ex: smtp.gmail.com)
+- SMTP_PORT (ex: 465)
+- SMTP_USERNAME (adresse d envoi)
+- SMTP_PASSWORD (mot de passe applicatif)
+- MAIL_FROM (adresse expediteur, souvent la meme que SMTP_USERNAME)

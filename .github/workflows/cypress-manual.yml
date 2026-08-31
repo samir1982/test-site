@@ -38,6 +38,11 @@ on:
         type: string
         required: false
         default: ""
+      email_to:
+        description: "Email recipient for run results"
+        type: string
+        required: false
+        default: "salounici@gmail.com"
 
 jobs:
   cypress-run:
@@ -98,3 +103,60 @@ jobs:
         env:
           TAGS: ${{ inputs.tags }}
         run: npx cypress run --spec "${{ steps.build_spec.outputs.value }}" --env "${{ steps.build_env.outputs.value }}"
+
+      - name: Build run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "# Cypress Manual Run Result"
+            echo ""
+            echo "- Status: ${{ job.status }}"
+            echo "- Environment: ${{ inputs.environment }}"
+            echo "- Language: ${{ inputs.language }}"
+            echo "- Device: ${{ inputs.device }}"
+            echo "- Tags: ${{ inputs.tags }}"
+            echo "- Keyword: ${{ inputs.keyword }}"
+            echo "- Spec: ${{ steps.build_spec.outputs.value }}"
+            echo "- Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > cypress-run-summary.txt
+
+          cat cypress-run-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-run-summary
+          path: cypress-run-summary.txt
+
+      - name: Send results by email
+        if: always() && secrets.SMTP_SERVER != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "[${{ github.repository }}] Cypress run ${{ job.status }}"
+          to: ${{ inputs.email_to }}
+          from: ${{ secrets.MAIL_FROM }}
+          body: |
+            Cypress workflow completed.
+
+            Status: ${{ job.status }}
+            Environment: ${{ inputs.environment }}
+            Language: ${{ inputs.language }}
+            Device: ${{ inputs.device }}
+            Tags: ${{ inputs.tags }}
+            Keyword: ${{ inputs.keyword }}
+            Spec: ${{ steps.build_spec.outputs.value }}
+            Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          attachments: cypress-run-summary.txt
+
+      - name: Notify missing SMTP secrets
+        if: always() && (secrets.SMTP_SERVER == '' || secrets.SMTP_USERNAME == '' || secrets.SMTP_PASSWORD == '')
+        shell: bash
+        run: |
+          echo "SMTP secrets are missing. Email notification was skipped." >> "$GITHUB_STEP_SUMMARY"
