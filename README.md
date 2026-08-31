@@ -134,3 +134,22 @@ Le test verifie:
 
 Pour un futur test recherche (exemple mot-cle "quebec"), ajoute les selecteurs et la donnee de test dans:
 - cypress/support/selectors/search.selectors.js
+
+## GitHub Actions (manuel)
+
+- Workflow: .github/workflows/cypress-manual.yml
+- Ouvre GitHub > Actions > Cypress Manual Run > Run workflow
+- Parametres disponibles:
+- environment: prod
+- language: all, fr, en
+- device: all, desktop, mobile
+- tags: filtre Gherkin (ex: @switch, @search, @search and not @wip)
+- keyword: mot recherche optionnel (ex: entreprises, business)
+
+Tags Gherkin disponibles:
+
+- @switch pour le scenario de switch de langue
+- @search pour le scenario de recherche
+- Si tags=@switch, l action lance language-switch.feature
+- Si tags=@search, l action lance search.feature
+- Si tags est vide, l action lance tous les fichiers .feature

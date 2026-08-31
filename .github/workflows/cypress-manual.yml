@@ -1,0 +1,100 @@
+name: Cypress Manual Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        default: prod
+        options:
+          - prod
+      language:
+        description: "Language to test"
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - fr
+          - en
+      device:
+        description: "Device profile"
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - desktop
+          - mobile
+      tags:
+        description: "Gherkin tags filter (example: @search or @search and not @wip)"
+        type: string
+        required: false
+        default: ""
+      keyword:
+        description: "Optional keyword override for search.feature (example: entreprises, business)"
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Cypress env arguments
+        id: build_env
+        shell: bash
+        run: |
+          ENV_ARGS="targetEnv=${{ inputs.environment }}"
+
+          if [ "${{ inputs.language }}" != "all" ]; then
+            ENV_ARGS="$ENV_ARGS,lang=${{ inputs.language }}"
+          fi
+
+          if [ "${{ inputs.device }}" != "all" ]; then
+            ENV_ARGS="$ENV_ARGS,device=${{ inputs.device }}"
+          fi
+
+          if [ -n "${{ inputs.keyword }}" ]; then
+            ENV_ARGS="$ENV_ARGS,keyword=${{ inputs.keyword }}"
+          fi
+
+          echo "value=$ENV_ARGS" >> "$GITHUB_OUTPUT"
+          echo "Final --env: $ENV_ARGS"
+
+      - name: Build feature scope from tags
+        id: build_spec
+        shell: bash
+        run: |
+          TAGS_INPUT="${{ inputs.tags }}"
+          SPEC_PATTERN="cypress/e2e/**/*.feature"
+
+          if [[ "$TAGS_INPUT" == *"@switch"* ]] && [[ "$TAGS_INPUT" != *"@search"* ]]; then
+            SPEC_PATTERN="cypress/e2e/language-switch.feature"
+          elif [[ "$TAGS_INPUT" == *"@search"* ]] && [[ "$TAGS_INPUT" != *"@switch"* ]]; then
+            SPEC_PATTERN="cypress/e2e/search.feature"
+          fi
+
+          echo "value=$SPEC_PATTERN" >> "$GITHUB_OUTPUT"
+          echo "Final --spec: $SPEC_PATTERN"
+
+      - name: Run Cypress Gherkin suite
+        env:
+          TAGS: ${{ inputs.tags }}
+        run: npx cypress run --spec "${{ steps.build_spec.outputs.value }}" --env "${{ steps.build_env.outputs.value }}"
