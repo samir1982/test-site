@@ -49,11 +49,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER || vars.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT || vars.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME || vars.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || vars.SMTP_PASSWORD }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM || vars.MAIL_FROM }}
+      SMTP_SECURE: ${{ secrets.SMTP_SECURE || vars.SMTP_SECURE }}
 
     steps:
       - name: Checkout
@@ -142,12 +143,28 @@ jobs:
         shell: bash
         run: |
           MISSING=""
+          SMTP_PORT_VALUE="${SMTP_PORT:-465}"
+          FROM_VALUE="$MAIL_FROM"
+          SECURE_VALUE="$SMTP_SECURE"
 
           if [ -z "$SMTP_SERVER" ]; then MISSING="$MISSING SMTP_SERVER"; fi
-          if [ -z "$SMTP_PORT" ]; then MISSING="$MISSING SMTP_PORT"; fi
           if [ -z "$SMTP_USERNAME" ]; then MISSING="$MISSING SMTP_USERNAME"; fi
           if [ -z "$SMTP_PASSWORD" ]; then MISSING="$MISSING SMTP_PASSWORD"; fi
-          if [ -z "$MAIL_FROM" ]; then MISSING="$MISSING MAIL_FROM"; fi
+
+          # If sender is not explicitly provided, fallback to SMTP username.
+          if [ -z "$FROM_VALUE" ]; then
+            FROM_VALUE="$SMTP_USERNAME"
+          fi
+
+          # Auto-detect secure mode if not explicitly provided.
+          # Port 465 usually requires implicit TLS (secure=true), other common ports use secure=false.
+          if [ -z "$SECURE_VALUE" ]; then
+            if [ "$SMTP_PORT_VALUE" = "465" ]; then
+              SECURE_VALUE="true"
+            else
+              SECURE_VALUE="false"
+            fi
+          fi
 
           if [ -n "$MISSING" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -157,18 +174,22 @@ jobs:
             echo "missing=" >> "$GITHUB_OUTPUT"
           fi
 
+          echo "port=$SMTP_PORT_VALUE" >> "$GITHUB_OUTPUT"
+          echo "from=$FROM_VALUE" >> "$GITHUB_OUTPUT"
+          echo "secure=$SECURE_VALUE" >> "$GITHUB_OUTPUT"
+
       - name: Send results by email
         if: always() && steps.smtp_check.outputs.ready == 'true'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ env.SMTP_SERVER }}
-          server_port: ${{ env.SMTP_PORT }}
-          secure: true
+          server_port: ${{ steps.smtp_check.outputs.port }}
+          secure: ${{ steps.smtp_check.outputs.secure }}
           username: ${{ env.SMTP_USERNAME }}
           password: ${{ env.SMTP_PASSWORD }}
           subject: "[${{ github.repository }}] Cypress run ${{ job.status }}"
           to: ${{ inputs.email_to }}
-          from: ${{ env.MAIL_FROM }}
+          from: ${{ steps.smtp_check.outputs.from }}
           body: |
             Cypress workflow completed.
 
