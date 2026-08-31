@@ -38,32 +38,10 @@ on:
         type: string
         required: false
         default: ""
-      email_to:
-        description: "Email recipient for run results"
-        type: string
-        required: false
-        default: "salounici@gmail.com"
-      require_email:
-        description: "Fail the run if email cannot be sent"
-        type: choice
-        required: true
-        default: "true"
-        options:
-          - "true"
-          - "false"
-
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      # Gmail defaults; secrets/variables can still override these values.
-      SMTP_SERVER: ${{ secrets.SMTP_SERVER || vars.SMTP_SERVER || 'smtp.gmail.com' }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT || vars.SMTP_PORT || '465' }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME || vars.SMTP_USERNAME || 'salounici@gmail.com' }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || vars.SMTP_PASSWORD }}
-      MAIL_FROM: ${{ secrets.MAIL_FROM || vars.MAIL_FROM }}
-      SMTP_SECURE: ${{ secrets.SMTP_SECURE || vars.SMTP_SECURE }}
 
     steps:
       - name: Checkout
@@ -145,88 +123,3 @@ jobs:
         with:
           name: cypress-run-summary
           path: cypress-run-summary.txt
-
-      - name: Check SMTP configuration
-        if: always()
-        id: smtp_check
-        shell: bash
-        run: |
-          MISSING=""
-          SMTP_PORT_VALUE="${SMTP_PORT:-465}"
-          FROM_VALUE="$MAIL_FROM"
-          SECURE_VALUE="$SMTP_SECURE"
-
-          if [ -z "$SMTP_SERVER" ]; then MISSING="$MISSING SMTP_SERVER"; fi
-          if [ -z "$SMTP_USERNAME" ]; then MISSING="$MISSING SMTP_USERNAME"; fi
-          if [ -z "$SMTP_PASSWORD" ]; then MISSING="$MISSING SMTP_PASSWORD"; fi
-
-          # If sender is not explicitly provided, fallback to SMTP username.
-          if [ -z "$FROM_VALUE" ]; then
-            FROM_VALUE="$SMTP_USERNAME"
-          fi
-
-          # Auto-detect secure mode if not explicitly provided.
-          # Port 465 usually requires implicit TLS (secure=true), other common ports use secure=false.
-          if [ -z "$SECURE_VALUE" ]; then
-            if [ "$SMTP_PORT_VALUE" = "465" ]; then
-              SECURE_VALUE="true"
-            else
-              SECURE_VALUE="false"
-            fi
-          fi
-
-          if [ -n "$MISSING" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-            echo "missing=" >> "$GITHUB_OUTPUT"
-          fi
-
-          echo "port=$SMTP_PORT_VALUE" >> "$GITHUB_OUTPUT"
-          echo "from=$FROM_VALUE" >> "$GITHUB_OUTPUT"
-          echo "secure=$SECURE_VALUE" >> "$GITHUB_OUTPUT"
-
-      - name: Send results by email
-        if: always() && steps.smtp_check.outputs.ready == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ env.SMTP_SERVER }}
-          server_port: ${{ steps.smtp_check.outputs.port }}
-          secure: ${{ steps.smtp_check.outputs.secure }}
-          username: ${{ env.SMTP_USERNAME }}
-          password: ${{ env.SMTP_PASSWORD }}
-          subject: "[${{ github.repository }}] Cypress run ${{ job.status }}"
-          to: ${{ inputs.email_to }}
-          from: ${{ steps.smtp_check.outputs.from }}
-          body: |
-            Cypress workflow completed.
-
-            Status: ${{ job.status }}
-            Environment: ${{ inputs.environment }}
-            Language: ${{ inputs.language }}
-            Device: ${{ inputs.device }}
-            Tags: ${{ inputs.tags }}
-            Keyword: ${{ inputs.keyword }}
-            Spec: ${{ steps.build_spec.outputs.value }}
-            Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          attachments: cypress-run-summary.txt
-
-      - name: Notify missing SMTP secrets
-        if: always() && steps.smtp_check.outputs.ready != 'true'
-        shell: bash
-        run: |
-          echo "SMTP secrets are missing. Email notification was skipped." >> "$GITHUB_STEP_SUMMARY"
-          echo "Missing secrets:${{ steps.smtp_check.outputs.missing }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "SMTP secrets are missing. Email notification was skipped."
-          echo "Missing secrets:${{ steps.smtp_check.outputs.missing }}"
-
-      - name: Fail when email is required but not configured
-        if: always() && steps.smtp_check.outputs.ready != 'true' && inputs.require_email == 'true'
-        shell: bash
-        run: |
-          echo "Email delivery is required but SMTP is not fully configured." >> "$GITHUB_STEP_SUMMARY"
-          echo "Set missing secrets/vars and rerun. Missing:${{ steps.smtp_check.outputs.missing }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Email delivery is required but SMTP is not fully configured."
-          echo "Set missing secrets/vars and rerun. Missing:${{ steps.smtp_check.outputs.missing }}"
-          exit 1
