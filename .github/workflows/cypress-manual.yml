@@ -48,6 +48,12 @@ jobs:
   cypress-run:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
 
     steps:
       - name: Checkout
@@ -131,17 +137,17 @@ jobs:
           path: cypress-run-summary.txt
 
       - name: Send results by email
-        if: always() && secrets.SMTP_SERVER != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != ''
+        if: always() && env.SMTP_SERVER != '' && env.SMTP_USERNAME != '' && env.SMTP_PASSWORD != ''
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: ${{ secrets.SMTP_SERVER }}
-          server_port: ${{ secrets.SMTP_PORT }}
+          server_address: ${{ env.SMTP_SERVER }}
+          server_port: ${{ env.SMTP_PORT }}
           secure: true
-          username: ${{ secrets.SMTP_USERNAME }}
-          password: ${{ secrets.SMTP_PASSWORD }}
+          username: ${{ env.SMTP_USERNAME }}
+          password: ${{ env.SMTP_PASSWORD }}
           subject: "[${{ github.repository }}] Cypress run ${{ job.status }}"
           to: ${{ inputs.email_to }}
-          from: ${{ secrets.MAIL_FROM }}
+          from: ${{ env.MAIL_FROM }}
           body: |
             Cypress workflow completed.
 
@@ -156,7 +162,7 @@ jobs:
           attachments: cypress-run-summary.txt
 
       - name: Notify missing SMTP secrets
-        if: always() && (secrets.SMTP_SERVER == '' || secrets.SMTP_USERNAME == '' || secrets.SMTP_PASSWORD == '')
+        if: always() && (env.SMTP_SERVER == '' || env.SMTP_USERNAME == '' || env.SMTP_PASSWORD == '')
         shell: bash
         run: |
           echo "SMTP secrets are missing. Email notification was skipped." >> "$GITHUB_STEP_SUMMARY"
