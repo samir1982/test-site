@@ -43,6 +43,14 @@ on:
         type: string
         required: false
         default: "salounici@gmail.com"
+      require_email:
+        description: "Fail the run if email cannot be sent"
+        type: choice
+        required: true
+        default: "true"
+        options:
+          - "true"
+          - "false"
 
 jobs:
   cypress-run:
@@ -209,3 +217,15 @@ jobs:
         run: |
           echo "SMTP secrets are missing. Email notification was skipped." >> "$GITHUB_STEP_SUMMARY"
           echo "Missing secrets:${{ steps.smtp_check.outputs.missing }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "SMTP secrets are missing. Email notification was skipped."
+          echo "Missing secrets:${{ steps.smtp_check.outputs.missing }}"
+
+      - name: Fail when email is required but not configured
+        if: always() && steps.smtp_check.outputs.ready != 'true' && inputs.require_email == 'true'
+        shell: bash
+        run: |
+          echo "Email delivery is required but SMTP is not fully configured." >> "$GITHUB_STEP_SUMMARY"
+          echo "Set missing secrets/vars and rerun. Missing:${{ steps.smtp_check.outputs.missing }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Email delivery is required but SMTP is not fully configured."
+          echo "Set missing secrets/vars and rerun. Missing:${{ steps.smtp_check.outputs.missing }}"
+          exit 1
