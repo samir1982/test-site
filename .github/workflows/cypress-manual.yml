@@ -1,4 +1,4 @@
-name: Cypress Manual Run - Auto Trigger Test
+name: Cypress CI
 
 on:
   workflow_dispatch:
@@ -41,20 +41,34 @@ on:
   push:
     branches:
       - main
-      - master
-  pull_request:
-    branches:
-      - main
-      - master
-    types:
-      - closed
 
 jobs:
-  cypress-run:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.pull_request.merged == true
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to staging
+        run: echo "Deploy to staging environment"
+
+  tests:
+    needs: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -120,14 +134,14 @@ jobs:
         shell: bash
         run: |
           {
-            echo "# Cypress Manual Run Result"
+            echo "# Cypress CI Result"
             echo ""
             echo "- Status: ${{ job.status }}"
-            echo "- Environment: ${{ inputs.environment }}"
-            echo "- Language: ${{ inputs.language }}"
-            echo "- Device: ${{ inputs.device }}"
-            echo "- Tags: ${{ inputs.tags }}"
-            echo "- Keyword: ${{ inputs.keyword }}"
+            echo "- Environment: ${{ inputs.environment || 'prod' }}"
+            echo "- Language: ${{ inputs.language || 'all' }}"
+            echo "- Device: ${{ inputs.device || 'all' }}"
+            echo "- Tags: ${{ inputs.tags || '' }}"
+            echo "- Keyword: ${{ inputs.keyword || '' }}"
             echo "- Spec: ${{ steps.build_spec.outputs.value }}"
             echo "- Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } > cypress-run-summary.txt
@@ -140,3 +154,17 @@ jobs:
         with:
           name: cypress-run-summary
           path: cypress-run-summary.txt
+
+  validation:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate test result
+        run: echo "Validation passed after Cypress execution"
+
+  production:
+    needs: validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production
+        run: echo "Deploy to production environment"
