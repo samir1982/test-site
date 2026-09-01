@@ -38,7 +38,6 @@ on:
         type: string
         required: false
         default: ""
-
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
@@ -98,3 +97,29 @@ jobs:
         env:
           TAGS: ${{ inputs.tags }}
         run: npx cypress run --spec "${{ steps.build_spec.outputs.value }}" --env "${{ steps.build_env.outputs.value }}"
+
+      - name: Build run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "# Cypress Manual Run Result"
+            echo ""
+            echo "- Status: ${{ job.status }}"
+            echo "- Environment: ${{ inputs.environment }}"
+            echo "- Language: ${{ inputs.language }}"
+            echo "- Device: ${{ inputs.device }}"
+            echo "- Tags: ${{ inputs.tags }}"
+            echo "- Keyword: ${{ inputs.keyword }}"
+            echo "- Spec: ${{ steps.build_spec.outputs.value }}"
+            echo "- Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > cypress-run-summary.txt
+
+          cat cypress-run-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-run-summary
+          path: cypress-run-summary.txt
