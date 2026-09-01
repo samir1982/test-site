@@ -1,4 +1,4 @@
-name: Cypress Manual Run
+name: Cypress Manual Run - Auto Trigger Test
 
 on:
   workflow_dispatch:
@@ -38,8 +38,20 @@ on:
         type: string
         required: false
         default: ""
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+    types:
+      - closed
+
 jobs:
   cypress-run:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -60,18 +72,23 @@ jobs:
         id: build_env
         shell: bash
         run: |
-          ENV_ARGS="targetEnv=${{ inputs.environment }}"
+          ENVIRONMENT="${{ inputs.environment || 'prod' }}"
+          LANGUAGE="${{ inputs.language || 'all' }}"
+          DEVICE="${{ inputs.device || 'all' }}"
+          KEYWORD="${{ inputs.keyword || '' }}"
 
-          if [ "${{ inputs.language }}" != "all" ]; then
-            ENV_ARGS="$ENV_ARGS,lang=${{ inputs.language }}"
+          ENV_ARGS="targetEnv=${ENVIRONMENT}"
+
+          if [ "$LANGUAGE" != "all" ]; then
+            ENV_ARGS="$ENV_ARGS,lang=$LANGUAGE"
           fi
 
-          if [ "${{ inputs.device }}" != "all" ]; then
-            ENV_ARGS="$ENV_ARGS,device=${{ inputs.device }}"
+          if [ "$DEVICE" != "all" ]; then
+            ENV_ARGS="$ENV_ARGS,device=$DEVICE"
           fi
 
-          if [ -n "${{ inputs.keyword }}" ]; then
-            ENV_ARGS="$ENV_ARGS,keyword=${{ inputs.keyword }}"
+          if [ -n "$KEYWORD" ]; then
+            ENV_ARGS="$ENV_ARGS,keyword=$KEYWORD"
           fi
 
           echo "value=$ENV_ARGS" >> "$GITHUB_OUTPUT"
@@ -81,7 +98,7 @@ jobs:
         id: build_spec
         shell: bash
         run: |
-          TAGS_INPUT="${{ inputs.tags }}"
+          TAGS_INPUT="${{ inputs.tags || '' }}"
           SPEC_PATTERN="cypress/e2e/**/*.feature"
 
           if [[ "$TAGS_INPUT" == *"@switch"* ]] && [[ "$TAGS_INPUT" != *"@search"* ]]; then
